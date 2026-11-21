@@ -1,0 +1,31 @@
+# Test build of the stock-panel-table branch: builds build/felucca.fwsc and uploads it as an artifact.
+name: build-fwsc
+on:
+  push:
+    branches: [stock-lcd]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python packages
+        run: pip install Pillow==12.3.0 numpy==2.3.5 fonttools==4.61.1
+      - name: JieLi toolchain
+        run: sh tools/get_toolchain.sh "$HOME/.jieli"
+      - name: AC79 SDK files (the three ChoralRoot vendors, same SHA-256 as tools/build.py SDK_SHA256)
+        run: git clone --depth 1 https://github.com/Quixotic7/ChoralRootFM1.git "$RUNNER_TEMP/cr"
+      - name: Build
+        env:
+          JIELI_TOOLCHAIN: /home/runner/.jieli/toolchain
+        run: AC79_SDK="$RUNNER_TEMP/cr/tools/sdk" ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jiant-stock-lcd
+          path: build/felucca.fwsc
