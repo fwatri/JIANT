@@ -2255,7 +2255,11 @@ static void persist_boot(void)                    /* before settings_init / pane
 #if FELUCCA_FLASH
     persist_t p;
     uint32_t f = irq_save();
-    flash_ok = FL_FAR(fl_jedec_ram)() == 0x856014u;       /* the expected 1 MiB part, else stay RAM-only */
+    {   /* the original 1 MiB part, or the newer FM-1s' UC25HQ80 (0xB36014; same 256-byte pages, 4 KiB sectors, as
+         * CoralFlower's hal/fm1_flash_id.h); anything else: RAM-only */
+        uint32_t id = FL_FAR(fl_jedec_ram)();
+        flash_ok = id == 0x856014u || id == 0xB36014u;
+    }
     irq_restore(f);
     if (!flash_ok)
         return;
