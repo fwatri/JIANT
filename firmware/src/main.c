@@ -228,6 +228,8 @@ static __attribute__((noinline)) void cpu_clock(void)
 #endif
 }
 
+static uint8_t audio_early;                   /* the I2S clocks started before the screen (fm1_main) */
+
 static void fm1_main(void)
 {
     uint32_t ms, said;
@@ -239,6 +241,13 @@ static void fm1_main(void)
     settings_init();
     prefs_update();                                     /* (JIANT 0.6.44) FX LATCH ON by default, once */
     usb_serial_apply();                                 /* (#67: the saved USB SERIAL before usb_start) */
+    /* the power-on pop (ChoralRoot 0.32, HISTORY 3y268): the DAC pops when its I2S clocks start 1.5 s or more after
+     * power-on, so they start here, before the screen and the splash. The DMA loops the zeroed buffer until
+     * fm1_irq_enable_all (icfg bit 8) lets ALNK0 in: silence until then. Not with CPU CLOCK 320 MHZ: that switch
+     * must come first (cpu_clock), so the audio starts where it always did */
+    audio_early = !(cpu_cfg & CPU_320);
+    if (audio_early)
+        audio_init();
     lcd_init();
     spl_anim = 1;                                       /* (JIANT 0.5) the signature written: splash_write */
     draw_splash();                                      /* ui_draw.c (1.1.5) */
@@ -263,7 +272,8 @@ static void fm1_main(void)
     felucca_init();
     master_boot();
     kb_boot_hold = 1;                         /* #137: no notes from the keys before the UI (seq.c keyboard_block) */
-    audio_init();
+    if (!audio_early)
+        audio_init();
     usb_start();
 #if FELUCCA_UART
     uart_midi_init();
